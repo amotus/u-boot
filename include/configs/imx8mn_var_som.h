@@ -13,6 +13,9 @@
 #define CFG_SYS_UBOOT_BASE	\
 	(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
+#define PART_A_ID    1
+#define PART_B_ID    2
+
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 1) \
 	func(MMC, mmc, 2) \
@@ -35,10 +38,26 @@
 	"emmc_dev=" __stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV) "\0" \
 	"emmc_ack=1\0" \
 	"pxefile_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
+	"distro_bootpart=" __stringify(PART_A_ID) "\0" \
+	"part_a_id=" __stringify(PART_A_ID) "\0" \
+	"part_b_id=" __stringify(PART_B_ID) "\0" \
+
+#define ALT_BOOTCMD \
+	"altbootcmd=" \
+		"echo Rollback to previous rootfs; " \
+		"if test x${distro_bootpart} = x${part_a_id}; then " \
+			"setenv distro_bootpart ${part_b_id}; " \
+		"else " \
+			"setenv distro_bootpart ${part_a_id}; " \
+		"fi; " \
+		"setenv bootcount 0; " \
+		"saveenv; " \
+		"boot\0" \
 
 /* Initial environment variables */
 #define CFG_EXTRA_ENV_SETTINGS \
 	MEM_LAYOUT_ENV_SETTINGS \
+	ALTBOOTCMD \
 	BOOTENV
 
 /* Link Definitions */
