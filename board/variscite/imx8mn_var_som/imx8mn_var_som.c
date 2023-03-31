@@ -5,8 +5,10 @@
  * Copyright 2023 DimOnOff Inc.
  */
 
+#include <env.h>
 #include <malloc.h>
 #include <asm/global_data.h>
+#include <asm/arch/sys_proto.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <linux/libfdt.h>
 #include <linux/errno.h>
@@ -14,6 +16,20 @@
 #include "som_eeprom.h"
 
 DECLARE_GLOBAL_DATA_PTR;
+
+int board_late_init(void)
+{
+	if (is_usb_boot()) {
+		/*
+		 * Force use of default env when booting from USB (MFG mode).
+		 * Using an existing environment in eMMC can cause problems in
+		 * MFG mode when trying to reflash U-Boot and rootfs.
+		 */
+		env_set_default("MFG mode", 0);
+	}
+
+	return 0;
+}
 
 int board_mmc_get_env_dev(int devno)
 {
