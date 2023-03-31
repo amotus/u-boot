@@ -11,6 +11,7 @@
 #include <fdt_support.h>
 #include <i2c_eeprom.h>
 #include <malloc.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/global_data.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <linux/libfdt.h>
@@ -46,6 +47,20 @@ struct var_imx8_eeprom_info {
 
 int board_init(void)
 {
+	return 0;
+}
+
+int board_late_init(void)
+{
+	if (is_usb_boot()) {
+		/*
+		 * Force use of default env when booting from USB (MFG mode).
+		 * Using an existing environment in eMMC can cause problems in
+		 * MFG mode when trying to reflash U-Boot and rootfs.
+		 */
+		env_set_default("MFG mode", 0);
+        }
+
 	return 0;
 }
 
