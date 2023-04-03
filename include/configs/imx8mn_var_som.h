@@ -34,6 +34,7 @@
 		__stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV) ".0:0\0" \
 	"fastboot_partition_alias_bootloader=" \
 		__stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV) ".1:0\0" \
+	"fastboot_addr=" __stringify(CONFIG_FASTBOOT_BUF_ADDR) "\0" \
 	"emmc_dev=" __stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV) "\0" \
 	"emmc_ack=1\0" \
 	"pxefile_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
