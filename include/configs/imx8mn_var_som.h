@@ -16,6 +16,52 @@
 #define PART_A_ID    1
 #define PART_B_ID    2
 
+#define GPT_SIG_VALID "aa550000"
+
+#define UMS_CMD \
+	"mfg_ums=" \
+		"echo Start UMS...; " \
+		"ums 0 mmc ${emmc_dev}\0" \
+
+#define FASTBOOT_CMD \
+	"mfg_fastboot=" \
+		"echo Starting fastboot...; " \
+		"fastboot 0\0" \
+
+#define CHECK_GPT_SIG_CMD \
+	"check_gpt_sig=" \
+		"mmc read ${temp_addr} 0 1; " \
+		"setexpr gpt_sig_addr ${temp_addr} + 1FC; " \
+		"if itest.l *${gpt_sig_addr} != " __stringify(GPT_SIG_VALID) "; then " \
+			"setenv gpt_sig_valid 0; " \
+		"else " \
+			"setenv gpt_sig_valid 1; " \
+		"fi\0" \
+
+/*
+ * Erase eMMC partition table. When using UMS mode, this will prevent
+ * the OS from mounting any previously defined partitions.
+ * eMMC partition table offset = 0.
+ * Note: we cannot use "mmc erase" command, because the "Erase Group Size"
+ * is 512 KB, as reported by "mmc info".
+ */
+#define MMC_DEL_PART_TABLE_CMD \
+	"mmc_del_part_table=" \
+		"mmc dev ${emmc_dev}; " \
+		"mw.b ${fastboot_addr} 0 200; " \
+		"mmc write ${fastboot_addr} 0 1\0" \
+
+/*
+ * Erase eMMC environment. For initial programming, this will prevent
+ * U-Boot from using/loading an old environment from eMMC.
+ */
+#define MMC_DEL_ENVIRONMENT_CMD \
+	"mmc_del_environment=" \
+		"mmc dev ${emmc_dev}; " \
+		"mw.b ${fastboot_addr} 0 200; " \
+		"setexpr mmc_env_offset_blk " __stringify(CONFIG_ENV_OFFSET) " / 200; " \
+		"mmc write ${fastboot_addr} ${mmc_env_offset_blk} 1\0" \
+
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 1) \
 	func(MMC, mmc, 2) \
@@ -27,6 +73,7 @@
 #define MEM_LAYOUT_ENV_SETTINGS \
 	"scriptaddr=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
 	"kernel_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
+	"temp_addr=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
 	"ramdisk_addr_r=0x43800000\0" \
 	"fdt_addr_r=0x43000000\0" \
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
@@ -41,6 +88,11 @@
 	"distro_bootpart=" __stringify(PART_A_ID) "\0" \
 	"part_a_id=" __stringify(PART_A_ID) "\0" \
 	"part_b_id=" __stringify(PART_B_ID) "\0" \
+
+#define MFG_BOOTCMD \
+	"mfg_bootcmd=" \
+		"run mfg_fastboot; " \
+		"run mfg_ums\0" \
 
 #define ALT_BOOTCMD \
 	"altbootcmd=" \
@@ -71,7 +123,14 @@
 /* Initial environment variables */
 #define CFG_EXTRA_ENV_SETTINGS \
 	MEM_LAYOUT_ENV_SETTINGS \
-	ALTBOOTCMD \
+	UMS_CMD \
+	FASTBOOT_CMD \
+	CHECK_GPT_SIG_CMD \
+	MMC_DEL_PART_TABLE_CMD \
+	MMC_DEL_ENVIRONMENT_CMD \
+	ALT_BOOTCMD \
+	BOARD_BOOTCOMMAND \
+	MFG_BOOTCMD \
 	BOOTENV
 
 /* Link Definitions */
