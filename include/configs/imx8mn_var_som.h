@@ -54,6 +54,20 @@
 		"saveenv; " \
 		"boot\0" \
 
+#define BOARD_BOOTCOMMAND \
+	"board_bootcmd=" \
+		"mmc dev ${emmc_dev}; " \
+		"run check_gpt_sig; " \
+		"gpio read back_button gpio@20_1; " \
+		"if test x${back_button} = x0; then " \
+			"run mfg_bootcmd; " \
+		"elif test ${gpt_sig_valid} != 1; then " \
+			"echo No partition table found...; " \
+			"run mfg_bootcmd; " \
+		"else " \
+			"run distro_bootcmd; " \
+		"fi\0" \
+
 /* Initial environment variables */
 #define CFG_EXTRA_ENV_SETTINGS \
 	MEM_LAYOUT_ENV_SETTINGS \
