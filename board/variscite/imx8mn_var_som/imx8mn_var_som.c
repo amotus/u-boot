@@ -59,6 +59,9 @@ int board_late_init(void)
 		 * MFG mode when trying to reflash U-Boot and rootfs.
 		 */
 		env_set_default("MFG mode", 0);
+
+                env_set("bootcmd", "run mfg_bootcmd");
+                env_set("bootdelay", "0");
         }
 
 	return 0;
