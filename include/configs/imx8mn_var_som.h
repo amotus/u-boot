@@ -85,6 +85,8 @@
 	"emmc_dev=" __stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV) "\0" \
 	"emmc_ack=1\0" \
 	"pxefile_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
+	"console=ttymxc3,115200\0" \
+	"boot_prefixes=/boot\0" \
 	"distro_bootpart=" __stringify(PART_A_ID) "\0" \
 	"part_a_id=" __stringify(PART_A_ID) "\0" \
 	"part_b_id=" __stringify(PART_B_ID) "\0" \
