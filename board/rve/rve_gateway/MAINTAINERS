@@ -1,0 +1,7 @@
+ARM i.MX8MN RVE GATEWAY BOARD
+M:	Hugo Villeneuve <hvilleneuve@dimonoff.com>
+S:	Maintained
+F:	arch/arm/dts/imx8mn-rve-gateway*
+F:	board/rve/rve_gateway/
+F:	configs/rve_gateway_defconfig
+F:	include/configs/rve_gateway.h

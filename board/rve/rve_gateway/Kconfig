@@ -1,0 +1,15 @@
+if TARGET_IMX8MN_RVE_GATEWAY
+
+config SYS_BOARD
+	default "rve_gateway"
+
+config SYS_VENDOR
+	default "rve"
+
+config SYS_CONFIG_NAME
+	default "rve_gateway"
+
+config IMX_CONFIG
+	default "board/variscite/imx8mn_var_som/imximage-8mn-ddr4.cfg"
+
+endif
