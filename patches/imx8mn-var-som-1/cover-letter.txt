@@ -1,0 +1,11 @@
+Hello,
+this patch series is for the migration of imx8mn-var-som-symphony board, as
+well as imx8mn-var-som SOM to OF_UPSTREAM.
+
+It also brings a few cleanups and enhancements, so that it will be easier in the
+future to add more boards using this SOM.
+
+I have succesfully tested the changes on a Variscite symphony carrier board with
+a VAR-SOM-MX8M-NANO having the EC configuration option.
+
+Thank you.
