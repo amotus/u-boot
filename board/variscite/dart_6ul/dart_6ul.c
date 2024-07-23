@@ -5,6 +5,7 @@
  * Copyright (C) 2021 Marc Ferland, Amotus Solutions Inc., <ferlandm@amotus.ca>
  */
 
+#include <env.h>
 #include <init.h>
 #include <net.h>
 #include <asm/arch/clock.h>
@@ -258,6 +259,29 @@ int checkboard(void)
 	       som_info_rev_to_str(info->som_info));
 
 	free(info);
+
+	return 0;
+}
+
+int board_late_init(void)
+{
+	int rc;
+
+	if (is_boot_from_usb()) {
+		env_set_default("MFG mode", 0);
+
+		rc = env_set_ulong("bootdelay", 0);
+		if (rc) {
+			pr_err("Failed to set bootdelay env var\n");
+			return rc;
+		}
+	}
+
+	rc = env_set_ulong("boot_from_usb", is_boot_from_usb());
+	if (rc) {
+		pr_err("Failed to set boot_from_usb env var\n");
+		return rc;
+	}
 
 	return 0;
 }
