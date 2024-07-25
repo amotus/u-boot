@@ -188,6 +188,16 @@ int board_mmc_init(struct bd_info *bis)
 	return 0;
 }
 
+void board_boot_order(u32 *spl_boot_list)
+{
+       u32 boot_dev = spl_boot_device();
+
+       if (boot_dev == BOOT_DEVICE_MMC1)
+               /* boot from MMC2 (eMMC) and skip uSD */
+               boot_dev = BOOT_DEVICE_MMC2;
+       spl_boot_list[0] = boot_dev;
+}
+
 void board_init_f(ulong dummy)
 {
 	/* setup AIPS and disable watchdog */
