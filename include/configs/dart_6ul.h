@@ -96,8 +96,8 @@
 		"mmc write ${fastboot_addr} ${mmc_env_offset_blk} 1\0" \
 
 #define BOOT_TARGET_DEVICES(func) \
-	func(MMC, mmc, 0) \
 	func(MMC, mmc, 1) \
+	func(MMC, mmc, 0) \
 	func(DHCP, dhcp, na)
 
 #include <config_distro_bootcmd.h>
