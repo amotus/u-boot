@@ -106,8 +106,8 @@
 	"scriptaddr=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
 	"kernel_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
 	"temp_addr=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
-	"ramdisk_addr_r=0x43800000\0" \
-	"fdt_addr_r=0x43000000\0" \
+	"ramdisk_addr_r=0x88000000\0" \
+	"fdt_addr_r=0x88000000\0" \
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"fastboot_partition_alias_all=" \
 		__stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV) ".0:0\0" \
