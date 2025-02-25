@@ -341,6 +341,8 @@ static void label_boot_kaslrseed(void)
 	return;
 }
 
+#ifdef CONFIG_OF_LIBFDT_OVERLAY
+
 /**
  * label_boot_fdtoverlay() - Loads fdt overlays specified in 'fdtoverlays'
  * or 'devicetree-overlay'
@@ -348,7 +350,6 @@ static void label_boot_kaslrseed(void)
  * @ctx: PXE context
  * @label: Label to process
  */
-#ifdef CONFIG_OF_LIBFDT_OVERLAY
 static void label_boot_fdtoverlay(struct pxe_context *ctx,
 				  struct pxe_label *label)
 {
@@ -431,6 +432,57 @@ skip_overlay:
 			free(overlayfile);
 	} while ((fdtoverlay = strstr(fdtoverlay, " ")));
 }
+
+/*
+ * Check if we need to load fdt overlays specified in 'fdtoverlays' label
+ * or in fdtoverlays environment variable.
+ *
+ * Returns 1 on success or < 0 on error.
+ */
+static int label_check_fdtoverlay(struct pxe_context *ctx, struct pxe_label *label)
+{
+	char *env_fdtoverlays;
+
+	env_fdtoverlays = env_get("fdtoverlays");
+	if (env_fdtoverlays) {
+		int len;
+		int label_empty = false;
+		const char *sep;
+
+		len = strlen(env_fdtoverlays);
+
+		if (label->fdtoverlays) {
+			len += strlen(label->fdtoverlays);
+			sep = " ";
+		} else {
+			label_empty = true;
+			sep = "";
+		}
+
+		len += strlen(sep);
+
+		/* If label->fdtoverlays is NULL, equivalent to malloc(). */
+		label->fdtoverlays = realloc(label->fdtoverlays, len);
+		if (!label->fdtoverlays) {
+			printf("malloc fail (fdtoverlays)\n");
+			return -ENOMEM;
+		}
+
+		if (label_empty)
+			label->fdtoverlays[0] = '\0';
+
+		strcat(label->fdtoverlays, sep);
+
+		/* Append board-specific fdtoverlays. */
+		strcat(label->fdtoverlays, env_fdtoverlays);
+	}
+
+	if (label->fdtoverlays)
+		label_boot_fdtoverlay(ctx, label);
+
+	return 1;
+}
+
 #endif
 
 /*
@@ -770,8 +822,9 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 				label_boot_kaslrseed();
 
 #ifdef CONFIG_OF_LIBFDT_OVERLAY
-			if (label->fdtoverlays)
-				label_boot_fdtoverlay(ctx, label);
+			err = label_check_fdtoverlay(ctx, label);
+			if (err < 0)
+				goto cleanup;
 #endif
 			label_boot_extension(ctx, label);
 
