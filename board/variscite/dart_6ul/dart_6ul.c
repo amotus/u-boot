@@ -204,11 +204,8 @@ static const char *som_info_rev_to_str(u8 som_info)
 	}
 }
 
-int checkboard(void)
+static int get_eeprom_device(const char *path, struct udevice **dev)
 {
-	const char *path = "eeprom0";
-	struct dart6ul_info *info;
-	struct udevice *dev;
 	int ret, off;
 
 	off = fdt_path_offset(gd->fdt_blob, path);
@@ -217,11 +214,25 @@ int checkboard(void)
 		return off;
 	}
 
-	ret = uclass_get_device_by_of_offset(UCLASS_I2C_EEPROM, off, &dev);
+	ret = uclass_get_device_by_of_offset(UCLASS_I2C_EEPROM, off, dev);
 	if (ret) {
 		printf("%s: uclass_get_device_by_of_offset() failed: %d\n", __func__, ret);
 		return ret;
 	}
+
+	return 0;
+}
+
+int checkboard(void)
+{
+	const char *path = "eeprom0";
+	struct dart6ul_info *info;
+	struct udevice *dev;
+	int ret;
+
+	ret = get_eeprom_device(path, &dev);
+	if (ret)
+		return ret;
 
 	info = malloc(sizeof(struct dart6ul_info));
 	if (!info)
