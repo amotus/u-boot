@@ -37,9 +37,11 @@ static const struct tfa_info *get_tfa_info(void)
 						       tfa_info[i].soc_name))
 				return &tfa_info[i];
 		}
+
+		return &invalid_tfa_info;
 	}
 
-	return &invalid_tfa_info;
+	return tfa_info;
 }
 
 const u8 *rzg_get_cpu_name(void)
