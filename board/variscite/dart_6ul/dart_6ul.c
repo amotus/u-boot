@@ -210,13 +210,13 @@ static int get_eeprom_device(const char *path, struct udevice **dev)
 
 	off = fdt_path_offset(gd->fdt_blob, path);
 	if (off < 0) {
-		printf("%s: fdt_path_offset() failed: %d\n", __func__, off);
+		pr_err("%s: fdt_path_offset() failed: %d\n", __func__, off);
 		return off;
 	}
 
 	ret = uclass_get_device_by_of_offset(UCLASS_I2C_EEPROM, off, dev);
 	if (ret) {
-		printf("%s: uclass_get_device_by_of_offset() failed: %d\n", __func__, ret);
+		pr_err("%s: uclass_get_device_by_of_offset() failed: %d\n", __func__, ret);
 		return ret;
 	}
 
