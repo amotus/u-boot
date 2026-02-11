@@ -65,7 +65,7 @@
 
 /* Default environment */
 #define CFG_EXTRA_ENV_SETTINGS \
-	"console=ttymxc0,115200n8\0" \
+	"console=ttymxc0\0" \
 	"addcon=setenv bootargs ${bootargs} console=${console},${baudrate}\0" \
 	"fit_addr=0x82000000\0" \
 	ENV_MMC
