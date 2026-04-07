@@ -315,18 +315,12 @@ static void decode_tlv(struct tlvinfo_tlv *tlv)
 	case TLV_CODE_MAC_SIZE:
 		sprintf(value, "%u", (tlv->value[0] << 8) | tlv->value[1]);
 		break;
-	case TLV_CODE_VENDOR_EXT:
-		value[0] = 0;
-		for (i = 0; (i < (DECODE_VALUE_MAX / 5)) && (i < tlv->length);
-				i++) {
-			sprintf(value, "%s 0x%02X", value, tlv->value[i]);
-		}
-		break;
 	case TLV_CODE_CRC_32:
 		sprintf(value, "0x%02X%02X%02X%02X",
 			tlv->value[0], tlv->value[1],
 			tlv->value[2], tlv->value[3]);
 		break;
+	case TLV_CODE_VENDOR_EXT:
 	default:
 		value[0] = 0;
 		for (i = 0; (i < (DECODE_VALUE_MAX / 5)) && (i < tlv->length);
