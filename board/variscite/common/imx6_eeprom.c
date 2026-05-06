@@ -75,8 +75,10 @@ static const char *som_info_storage_to_str(u8 som_info)
 static const char *som_info_rev_to_str(u8 som_info)
 {
 	switch (IMX6_INFO_REV_GET(som_info)) {
-	case 0x0: return "2.4G";
-	case 0x1: return "5G";
+	case 0x0: return "2.4G LWB";
+	case 0x1: return "5G LW5";
+	case 0x2: return "5G IW611";
+	case 0x3: return "5G IW612";
 	default: return "unknown";
 	}
 }
