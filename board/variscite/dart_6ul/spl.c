@@ -11,9 +11,19 @@
 #include <asm/io.h>
 #include <asm/arch/mx6-ddr.h>
 #include <asm/arch/mx6-pins.h>
+#include <asm/mach-imx/mxc_i2c.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/sections.h>
 #include <fsl_esdhc_imx.h>
+#include <linux/delay.h>
+
+#include "../common/imx6_eeprom.h"
+
+#ifdef SPL_DEBUG
+#define spl_debug(M, ...) printf(M, ##__VA_ARGS__)
+#else
+#define spl_debug(M, ...)
+#endif
 
 #define UART_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |		\
 	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |		\
@@ -105,8 +115,9 @@ static void ccgr_init(void)
 	writel(0x01130100, (long *)CCM_CCOSR);
 }
 
-static void spl_dram_init(void)
+static void spl_legacy_dram_init(void)
 {
+	printf("DDR LEGACY configuration\n");
 	mx6ul_dram_iocfg(mem_ddr.width, &mx6_ddr_ioregs, &mx6_grp_ioregs);
 	mx6_dram_cfg(&ddr_sysinfo, &mx6_mmcd_calib, &mem_ddr);
 }
@@ -198,8 +209,183 @@ void board_boot_order(u32 *spl_boot_list)
        spl_boot_list[0] = boot_dev;
 }
 
+#define I2C_PAD_CTRL    (PAD_CTL_PKE | PAD_CTL_PUE |			\
+			 PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |	\
+			 PAD_CTL_DSE_40ohm | PAD_CTL_HYS |		\
+			 PAD_CTL_ODE)
+
+static struct i2c_pads_info i2c2_pads_info = {
+	.scl = {
+		.i2c_mode  = MX6_PAD_CSI_HSYNC__I2C2_SCL | MUX_PAD_CTRL(I2C_PAD_CTRL),
+		.gpio_mode = MX6_PAD_CSI_HSYNC__GPIO4_IO20 | MUX_PAD_CTRL(I2C_PAD_CTRL),
+		.gp = IMX_GPIO_NR(4, 20),
+	},
+	.sda = {
+		.i2c_mode  = MX6_PAD_CSI_VSYNC__I2C2_SDA | MUX_PAD_CTRL(I2C_PAD_CTRL),
+		.gpio_mode = MX6_PAD_CSI_VSYNC__GPIO4_IO19 | MUX_PAD_CTRL(I2C_PAD_CTRL),
+		.gp = IMX_GPIO_NR(4, 19),
+	},
+};
+
+static u32 get_address_by_index(u8 index, const u32 *default_addresses, const u32 *custom_addresses)
+{
+	if (index >= MAX_DEFAULT_ADDRS_INDEX)
+		return custom_addresses[index - MAX_DEFAULT_ADDRS_INDEX];
+
+	return default_addresses[index];
+}
+
+static u32 get_value_by_index(u8 index, const u32 *default_values, const u32 *custom_values)
+{
+	if (index >= MAX_DEFAULT_VALUES_INDEX)
+		return custom_values[index - MAX_DEFAULT_VALUES_INDEX];
+
+	return default_values[index];
+}
+
+static int handle_commands(const struct cmd eeprom_cmd[],
+			   const u32 *default_addresses, const u32 *default_values,
+			   const u32 *custom_addresses, const u32 *custom_values)
+{
+	u32 address, value;
+	volatile u32 *reg_ptr;
+	u8 wait_idx = 0;
+	int i = 0;
+
+	while (i < MAX_NUM_OF_COMMANDS) {
+		spl_debug("Command[%03d] addr=%03d,  index=%03d\n", i, eeprom_cmd[i].addr,
+			 eeprom_cmd[i].index);
+
+		if (eeprom_cmd[i].addr == LAST_COMMAND_INDEX)
+			return 0;
+
+		if (eeprom_cmd[i].index == DELAY_10USEC_INDEX) {
+			/* Delay for Value * 10 uSeconds */
+			spl_debug("  Delay %d microseconds\n", eeprom_cmd[i].index * 10);
+			udelay((int)(eeprom_cmd[i].index * 10));
+			++i;
+			continue;
+		}
+
+		/*
+		 * Check for a wait index.
+		 * A wait index means "next command is a wait command".
+		 */
+		switch (eeprom_cmd[i].addr) {
+		case WHILE_NOT_EQUAL_INDEX:
+		case WHILE_EQUAL_INDEX:
+		case WHILE_AND_INDEX:
+		case WHILE_NOT_AND_INDEX:
+			/* Save wait index and go to next command */
+			wait_idx = eeprom_cmd[i].addr;
+			++i;
+			break;
+		}
+
+		/* Get address and value */
+		address = get_address_by_index(eeprom_cmd[i].addr, default_addresses,
+					       custom_addresses);
+		value = get_value_by_index(eeprom_cmd[i].index, default_values, custom_values);
+		reg_ptr = (u32 *)address;
+
+		switch (wait_idx) {
+		case WHILE_NOT_EQUAL_INDEX:
+			spl_debug("  Wait !=\n");
+			while (*reg_ptr != value);
+			break;
+		case WHILE_EQUAL_INDEX:
+			spl_debug("  Wait ==\n");
+			while (*reg_ptr == value);
+			break;
+		case WHILE_AND_INDEX:
+			spl_debug("  Wait and\n");
+			while (*reg_ptr & value);
+			break;
+		case WHILE_NOT_AND_INDEX:
+			spl_debug("  Wait !and\n");
+			while (!(*reg_ptr & value));
+			break;
+		default:
+			if (address == 0x021B0020 && value == 0x00007800)
+				value = 0x00000800;
+
+			/* This is a regular set command (non-wait) */
+			spl_debug("  [$%08X] = $%08X\n", address, value);
+			*reg_ptr = value;
+			break;
+		}
+
+		wait_idx = 0;
+		++i;
+	}
+
+	return 0;
+}
+
+/*
+ * Fills custom_addresses & custom_values, from custom_addresses_values
+ */
+static void load_custom_data(u32 *custom_addresses, u32 *custom_values, const u32 *custom_addr_val)
+{
+	int i, j = 0;
+
+	for (i = 0; i < MAX_CUSTOM_ADDRESSES; i++) {
+		if (custom_addr_val[i] == 0)
+			break;
+
+		spl_debug("%s(): eeprom_addresses[%02d] = $%08X\n", __func__, i, custom_addr_val[i]);
+		custom_addresses[i] = custom_addr_val[i];
+	}
+
+	i++;
+	if (i > MAX_CUSTOM_ADDRESSES)
+		return;
+
+	j = 0;
+	for (; i < MAX_CUSTOM_VALUES; i++) {
+		if (custom_addr_val[i] == 0)
+			break;
+		custom_values[j] = custom_addr_val[i];
+		spl_debug("%s(): eeprom_values[%02d] = $%08X\n", __func__, j, custom_addr_val[i]);
+		j++;
+	}
+}
+
+static int spl_eeprom_dram_init(const u32 *eeprom_addr_val, const struct cmd eeprom_cmd[])
+{
+	/*
+	 * The eeprom contains commands with
+	 * 1 byte index to a default address in this array, and
+	 * 1 byte index to a default value in the next array - to write to the address.
+	 */
+	const u32 default_addresses[] = {
+		#include "addresses.inc"
+	};
+
+	const u32 default_values[] = {
+		#include "values.inc"
+	};
+
+	/*
+	 * Some commands in the eeprom contain higher indices,
+	 * to custom addresses and values which are not present in the default arrays,
+	 * and it also contains an array of the custom addresses and values themselves.
+	 */
+	u32 custom_addresses[MAX_CUSTOM_ADDRESSES] = {0};
+	u32 custom_values[MAX_CUSTOM_VALUES] = {0};
+
+	load_custom_data(custom_addresses, custom_values, eeprom_addr_val);
+
+	return handle_commands(eeprom_cmd, default_addresses, default_values,
+			       custom_addresses, custom_values);
+}
+
 void board_init_f(ulong dummy)
 {
+	int ret;
+	u32 eeprom_addr_val[MAX_CUSTOM_ADDRESSES];
+	struct cmd eeprom_cmd[MAX_NUM_OF_COMMANDS];
+
 	/* setup AIPS and disable watchdog */
 	arch_cpu_init();
 
@@ -213,6 +399,16 @@ void board_init_f(ulong dummy)
 	/* UART clocks enabled and gd valid - init serial console */
 	preloader_console_init();
 
+	setup_i2c(IMX6_EEPROM_I2C_BUS, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c2_pads_info);
+
 	/* DDR initialization */
-	spl_dram_init();
+	ret = imx6_eeprom_dram_init(eeprom_addr_val, eeprom_cmd);
+	if (ret == 0) {
+		ret = spl_eeprom_dram_init(eeprom_addr_val, eeprom_cmd);
+	}
+
+	if (ret)
+		spl_legacy_dram_init();
+	else
+		printf("DDR eeprom configuration\n");
 }
