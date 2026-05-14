@@ -25,11 +25,8 @@ struct imx6_eeprom_info {
 	u8 partnumber[IMX6_PN_LEN];
 	u8 assy[IMX6_ASSY_LEN];
 	u8 date[IMX6_DATE_LEN];
-	u32 custom_addr_val[32];
-	struct cmd {
-		u8 addr;
-		u8 index;
-	} custom_cmd[150];
+	u32 custom_addr_val[MAX_CUSTOM_ADDRESSES];
+	struct cmd custom_cmd[MAX_NUM_OF_COMMANDS];
 	u8 res[33];
 	u8 som_info;
 	u8 ddr_size;
