@@ -11,7 +11,6 @@
 #include <i2c_eeprom.h>
 #include <linux/libfdt.h>
 #include <linux/printk.h>
-#include <malloc.h>
 
 #include "imx6_eeprom.h"
 
@@ -85,7 +84,7 @@ static const char *som_info_rev_to_str(u8 som_info)
 
 int imx6_eeprom_display_infos(const char *path)
 {
-	struct imx6_eeprom_info *info;
+	struct imx6_eeprom_info info;
 	struct udevice *dev;
 	int ret;
 
@@ -93,42 +92,34 @@ int imx6_eeprom_display_infos(const char *path)
 	if (ret)
 		return ret;
 
-	info = malloc(sizeof(struct imx6_eeprom_info));
-	if (!info)
-		return -ENOMEM;
-
-	ret = i2c_eeprom_read(dev, 0, (uint8_t *)info,
+	ret = i2c_eeprom_read(dev, 0, (uint8_t *)&info,
 			      sizeof(struct imx6_eeprom_info));
 	if (ret) {
 		printf("%s: i2c_eeprom_read() failed: %d\n", __func__, ret);
-		free(info);
 		return ret;
 	}
 
-	if (info->magic != IMX6_INFO_MAGIC) {
+	if (info.magic != IMX6_INFO_MAGIC) {
 		printf("Board: Invalid board info magic: 0x%08x, expected 0x%08x\n",
-		       info->magic, IMX6_INFO_MAGIC);
+		       info.magic, IMX6_INFO_MAGIC);
 		/* do not fail if the content is invalid */
-		free(info);
 		return 0;
 	}
 
 	/* make sure strings are null terminated */
-	info->partnumber[IMX6_PN_LEN - 1] = '\0';
-	info->assy[IMX6_ASSY_LEN - 1] = '\0';
-	info->date[IMX6_DATE_LEN - 1] = '\0';
+	info.partnumber[IMX6_PN_LEN - 1] = '\0';
+	info.assy[IMX6_ASSY_LEN - 1] = '\0';
+	info.date[IMX6_DATE_LEN - 1] = '\0';
 
 	printf("Board: PN: %s, Assy: %s, Date: %s\n"
 	       "       Storage: %s, Wifi: %s, DDR: %d MiB, Rev: %s\n",
-	       info->partnumber,
-	       info->assy,
-	       info->date,
-	       som_info_storage_to_str(info->som_info),
-	       IMX6_INFO_WIFI_GET(info->som_info) ? "yes" : "no",
-	       IMX6_DDRSIZE(info->ddr_size) / SZ_1M,
-	       som_info_rev_to_str(info->som_info));
-
-	free(info);
+	       info.partnumber,
+	       info.assy,
+	       info.date,
+	       som_info_storage_to_str(info.som_info),
+	       IMX6_INFO_WIFI_GET(info.som_info) ? "yes" : "no",
+	       IMX6_DDRSIZE(info.ddr_size) / SZ_1M,
+	       som_info_rev_to_str(info.som_info));
 
 	return 0;
 }
