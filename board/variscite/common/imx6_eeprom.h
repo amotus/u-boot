@@ -23,6 +23,9 @@
 #define MAX_CUSTOM_VALUES	32
 #define MAX_NUM_OF_COMMANDS	150
 
+#define EEPROM_WAIT_COMMAND_DELAY_US	100  /* Delay in us between retries. */
+#define EEPROM_WAIT_COMMAND_MAX_TRY	1000 /* Maximum number of retries. */
+
 struct cmd {
 	u8 addr;
 	u8 index;

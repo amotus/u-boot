@@ -288,34 +288,53 @@ static int handle_commands(const struct cmd eeprom_cmd[],
 		value = get_value_by_index(eeprom_cmd[i].index, default_values, custom_values);
 		reg_ptr = (u32 *)address;
 
-		switch (wait_idx) {
-		case WHILE_NOT_EQUAL_INDEX:
-			spl_debug("  Wait !=\n");
-			while (*reg_ptr != value);
-			break;
-		case WHILE_EQUAL_INDEX:
-			spl_debug("  Wait ==\n");
-			while (*reg_ptr == value);
-			break;
-		case WHILE_AND_INDEX:
-			spl_debug("  Wait and\n");
-			while (*reg_ptr & value);
-			break;
-		case WHILE_NOT_AND_INDEX:
-			spl_debug("  Wait !and\n");
-			while (!(*reg_ptr & value));
-			break;
-		default:
+		if (wait_idx != 0) {
+			bool done = false;
+			int try = 0;
+
+			do {
+				udelay(EEPROM_WAIT_COMMAND_DELAY_US);
+
+				switch (wait_idx) {
+				case WHILE_NOT_EQUAL_INDEX:
+					spl_debug("  Wait !=\n");
+					if (!(*reg_ptr != value))
+						done = true;
+					break;
+				case WHILE_EQUAL_INDEX:
+					spl_debug("  Wait ==\n");
+					if (!(*reg_ptr == value))
+						done = true;
+					break;
+				case WHILE_AND_INDEX:
+					spl_debug("  Wait and\n");
+					if (!(*reg_ptr & value))
+						done = true;
+					break;
+				case WHILE_NOT_AND_INDEX:
+					spl_debug("  Wait !and\n");
+					if (*reg_ptr & value)
+						done = true;
+					break;
+				}
+
+				if (++try > EEPROM_WAIT_COMMAND_MAX_TRY) {
+					pr_err("%s() wait failure: reg=$%08X, value=$%08X\n",
+					       __func__, address, value);
+					done = true;
+				}
+			} while (!done);
+
+			wait_idx = 0;
+		} else {
 			if (address == 0x021B0020 && value == 0x00007800)
 				value = 0x00000800;
 
 			/* This is a regular set command (non-wait) */
 			spl_debug("  [$%08X] = $%08X\n", address, value);
 			*reg_ptr = value;
-			break;
 		}
 
-		wait_idx = 0;
 		++i;
 	}
 
